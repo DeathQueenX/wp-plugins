@@ -8,6 +8,8 @@ function eburete_mcp_register_diagnostics() {
 		'performance-health' => array( 'Performance health', 'Read runtime, autoload size, cron backlog and Action Scheduler counts. Does not execute jobs.', 'eburete_mcp_performance_health', array() ),
 		'profile-public-page' => array( 'Profile an uncached public page', 'Runs one anonymous GET on this site with cache bypass and records PHP phases, database and outbound HTTP timing. No browser required. Diagnostics add overhead; compare multiple samples. Never calls arbitrary URLs.', 'eburete_mcp_profile_page', array( 'post_id' => array( 'type' => 'integer', 'minimum' => 0, 'description' => '0 for homepage, otherwise an existing published post/page/product ID.' ) ) ),
 	);
+	$definitions['configure-performance-guard'] = array( 'Configure Query Monitor guard', 'Installs a fixed early diagnostic guard. enabled=true skips Query Monitor only on anonymous frontend requests; false restores it. Preserves admin, REST, cron and authenticated users.', 'eburete_mcp_configure_guard', array( 'enabled' => array( 'type' => 'boolean' ) ) );
+	$definitions['profile-public-page'][3]['disable_query_monitor'] = array( 'type' => 'boolean', 'description' => 'One-request isolation without Query Monitor or query logging; requires early guard.' );
 	foreach ( $definitions as $slug => $definition ) {
 		wp_register_ability( 'eburete-operations/' . $slug, array(
 			'label' => $definition[0], 'description' => $definition[1], 'category' => 'eburete-operations',
@@ -16,6 +18,18 @@ function eburete_mcp_register_diagnostics() {
 			'meta' => eburete_mcp_operations_meta( 'performance-health' === $slug, false ),
 		) );
 	}
+}
+
+function eburete_mcp_configure_guard( $input ) {
+	if ( ! current_user_can( 'update_plugins' ) || ! wp_is_file_mod_allowed( 'eburete_mcp_guard' ) || ! isset( $input['enabled'] ) || ! is_bool( $input['enabled'] ) ) { return new WP_Error( 'guard_forbidden', 'Update permission and an explicit boolean enabled are required.' ); }
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	if ( 'direct' !== get_filesystem_method() ) { return new WP_Error( 'guard_filesystem', 'Direct filesystem access is required.' ); }
+	$source = file_get_contents( __DIR__ . '/performance-guard-template.php' );
+	$target = WPMU_PLUGIN_DIR . '/eburete-performance-guard.php';
+	if ( file_exists( $target ) && hash_file( 'sha256', $target ) !== hash( 'sha256', $source ) ) { return new WP_Error( 'guard_conflict', 'An existing guard differs. It was not overwritten.' ); }
+	if ( ! wp_mkdir_p( WPMU_PLUGIN_DIR ) || false === file_put_contents( $target, $source, LOCK_EX ) || hash_file( 'sha256', $target ) !== hash( 'sha256', $source ) ) { return new WP_Error( 'guard_write_failed', 'Guard could not be installed and verified.' ); }
+	update_option( 'eburete_mcp_qm_public_disabled', $input['enabled'], false );
+	return array( 'installed' => true, 'public_query_monitor_disabled' => (bool) get_option( 'eburete_mcp_qm_public_disabled', false ), 'reversal' => 'Call this ability with enabled=false. Admin and authenticated diagnostics remain available.' );
 }
 
 function eburete_mcp_performance_health() {
@@ -88,7 +102,9 @@ function eburete_mcp_profile_page( $input = array() ) {
 	set_transient( 'eburete_mcp_profile_lock', true, 60 );
 	$token = bin2hex( random_bytes( 32 ) );
 	$key = hash( 'sha256', $token );
-	set_transient( 'eburete_mcp_ticket_' . $key, true, 90 );
+	$disable_qm = ! empty( $input['disable_query_monitor'] );
+	if ( $disable_qm && ! file_exists( WPMU_PLUGIN_DIR . '/eburete-performance-guard.php' ) ) { return new WP_Error( 'guard_missing', 'Install the performance guard first.' ); }
+	set_transient( 'eburete_mcp_ticket_' . $key, array( 'disable_qm' => $disable_qm ), 90 );
 	$started = microtime( true );
 	$response = wp_remote_get( add_query_arg( 'eburete_profile', $key, $url ), array(
 		'timeout' => 40, 'redirection' => 0, 'sslverify' => true, 'limit_response_size' => 2097152,
@@ -122,6 +138,8 @@ function eburete_mcp_begin_profile() {
 	}
 	$start = (float) ( $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime( true ) );
 	$phases = array( 'plugins_loaded_start' => round( ( microtime( true ) - $start ) * 1000, 2 ) );
+	$phases['_query_monitor_disabled'] = defined( 'QM_DISABLED' ) && QM_DISABLED;
+	$phases['_savequeries'] = defined( 'SAVEQUERIES' ) && SAVEQUERIES;
 	foreach ( array( 'plugins_loaded', 'after_setup_theme', 'init', 'wp_loaded', 'wp', 'template_redirect', 'wp_head', 'wp_footer' ) as $hook ) {
 		add_action( $hook, static function () use ( &$phases, $hook, $start ) { $phases[ $hook ] = round( ( microtime( true ) - $start ) * 1000, 2 ); }, PHP_INT_MAX );
 	}
