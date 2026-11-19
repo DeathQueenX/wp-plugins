@@ -105,7 +105,7 @@ function eburete_mcp_profile_page( $input = array() ) {
 	$key = hash( 'sha256', $token );
 	$disable_qm = ! empty( $input['disable_query_monitor'] );
 	if ( $disable_qm && ! file_exists( WPMU_PLUGIN_DIR . '/eburete-performance-guard.php' ) ) { return new WP_Error( 'guard_missing', 'Install the performance guard first.' ); }
-	set_transient( 'eburete_mcp_ticket_' . $key, array_merge( array( 'disable_qm' => $disable_qm ), array_key_exists( 'product_meta_prefetch', $input ) ? array( 'product_meta_prefetch' => (bool) $input['product_meta_prefetch'] ) : array() ), 90 );
+	set_transient( 'eburete_mcp_ticket_' . $key, array_merge( array( 'disable_qm' => $disable_qm ), array_key_exists( 'product_meta_prefetch', $input ) ? array( 'product_meta_prefetch' => (bool) $input['product_meta_prefetch'] ) : array(), array_key_exists( 'image_prefetch', $input ) ? array( 'image_prefetch' => (bool) $input['image_prefetch'] ) : array() ), 90 );
 	$started = microtime( true );
 	$response = wp_remote_get( add_query_arg( 'eburete_profile', $key, $url ), array(
 		'timeout' => 40, 'redirection' => 0, 'sslverify' => true, 'limit_response_size' => 2097152,
@@ -176,6 +176,6 @@ function eburete_mcp_begin_profile() {
 		}
 		uasort( $groups, static function ( $a, $b ) { return $b['ms'] <=> $a['ms']; } );
 		$elapsed = round( ( microtime( true ) - $start ) * 1000, 2 );
-		set_transient( 'eburete_mcp_report_' . $key, array( 'metadata_prefetch' => Eburete_MCP_Product_Prefetch::report(), 'shortcodes' => Eburete_MCP_Attribution::report(), 'repeated_queries' => Eburete_MCP_Attribution::query_report(), 'php_ms' => $elapsed, 'phases_ms_from_request_start' => $phases, 'db_queries_total' => $wpdb->num_queries, 'db_logged_queries' => count( (array) $wpdb->queries ), 'db_logged_ms' => round( $db_ms, 2 ), 'db_slowest_callers' => array_slice( $groups, 0, 15, true ), 'http_requests_after_plugins_loaded' => $http, 'peak_memory_bytes' => memory_get_peak_usage( true ), 'warning' => 'SAVEQUERIES and any active Query Monitor add overhead. Queries before plugins_loaded may be absent. HTTP covers WordPress HTTP API only; phase deltas are not exclusive CPU time.' ), 180 );
+		set_transient( 'eburete_mcp_report_' . $key, array( 'image_prefetch' => Eburete_MCP_Image_Prefetch::report(), 'metadata_prefetch' => Eburete_MCP_Product_Prefetch::report(), 'shortcodes' => Eburete_MCP_Attribution::report(), 'repeated_queries' => Eburete_MCP_Attribution::query_report(), 'php_ms' => $elapsed, 'phases_ms_from_request_start' => $phases, 'db_queries_total' => $wpdb->num_queries, 'db_logged_queries' => count( (array) $wpdb->queries ), 'db_logged_ms' => round( $db_ms, 2 ), 'db_slowest_callers' => array_slice( $groups, 0, 15, true ), 'http_requests_after_plugins_loaded' => $http, 'peak_memory_bytes' => memory_get_peak_usage( true ), 'warning' => 'SAVEQUERIES and any active Query Monitor add overhead. Queries before plugins_loaded may be absent. HTTP covers WordPress HTTP API only; phase deltas are not exclusive CPU time.' ), 180 );
 	}, PHP_INT_MAX );
 }

@@ -33,7 +33,7 @@ function eburete_mcp_installed_version() {
 }
 
 function eburete_mcp_release_manifest() {
-	$response = wp_safe_remote_get( 'https://raw.githubusercontent.com/DeathQueenX/wp-plugins/main/releases/eburete-mcp-operations.json', array( 'timeout' => 15, 'redirection' => 0, 'limit_response_size' => 16384, 'sslverify' => true ) );
+	$response = wp_safe_remote_get( 'https://raw.githubusercontent.com/DeathQueenX/wp-plugins/main/releases/eburete-mcp-operations.json?check=' . time(), array( 'timeout' => 15, 'redirection' => 0, 'limit_response_size' => 16384, 'sslverify' => true ) );
 	if ( is_wp_error( $response ) ) { return $response; }
 	if ( 200 !== wp_remote_retrieve_response_code( $response ) ) { return new WP_Error( 'release_unavailable', 'Release manifest could not be retrieved.' ); }
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Eburete MCP Operations
  * Description: Safe operational abilities for the WordPress MCP Adapter: diagnostics and LiteSpeed Cache management.
- * Version: 0.7.1
+ * Version: 0.8.0
  * Update URI: https://github.com/DeathQueenX/wp-plugins
  * Requires at least: 7.1
  * Requires PHP: 8.1
@@ -15,6 +15,7 @@ defined( 'ABSPATH' ) || exit;
 require_once __DIR__ . '/diagnostics.php';
 require_once __DIR__ . '/attribution.php';
 require_once __DIR__ . '/product-prefetch.php';
+require_once __DIR__ . '/image-prefetch.php';
 require_once __DIR__ . '/updater.php';
 
 /**
