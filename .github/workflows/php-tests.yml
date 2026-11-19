@@ -19,6 +19,8 @@ jobs:
         run: php tests/test-updater.php
       - name: Attribution correctness
         run: php tests/test-attribution.php
+      - name: Metadata batching isolation
+        run: php tests/test-prefetch.php
   package:
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
