@@ -1,2 +1,2 @@
 # wp-plugins
-Moduler Wordpress - Custom AI
+Module Wordpress - Custom AI
