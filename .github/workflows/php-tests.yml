@@ -21,6 +21,8 @@ jobs:
         run: php tests/test-attribution.php
       - name: Image batching isolation
         run: php tests/test-images.php
+      - name: Variation batching isolation
+        run: php tests/test-variations.php
       - name: Metadata batching isolation
         run: php tests/test-prefetch.php
   package:
