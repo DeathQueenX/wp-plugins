@@ -1,0 +1,19 @@
+name: PHP validation
+on:
+  push:
+    paths:
+      - 'eburete-mcp-operations/**'
+      - 'tests/**'
+      - '.github/workflows/php-tests.yml'
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: PHP syntax
+        run: find eburete-mcp-operations tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Updater security boundaries
+        run: php tests/test-updater.php
