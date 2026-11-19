@@ -75,6 +75,13 @@ function eburete_mcp_validate_update_zip( $file, $version ) {
 	} finally { $zip->close(); }
 }
 
+function eburete_mcp_restore_active_state( $plugin, $was_active ) {
+	if ( ! $was_active || is_plugin_active( $plugin ) ) { return true; }
+	$activation = activate_plugin( $plugin, '', false, true );
+	if ( is_wp_error( $activation ) ) { return $activation; }
+	return is_plugin_active( $plugin ) ? true : new WP_Error( 'reactivation_failed', 'Updated plugin could not be reactivated.' );
+}
+
 function eburete_mcp_install_self_update( $input ) {
 	if ( ! eburete_mcp_can_update_self() ) { return new WP_Error( 'forbidden', 'Self-update permission denied.' ); }
 	$release = eburete_mcp_release_manifest();
@@ -99,6 +106,7 @@ function eburete_mcp_install_self_update( $input ) {
 		$valid = eburete_mcp_validate_update_zip( $file, $release['version'] );
 		if ( is_wp_error( $valid ) ) { return $valid; }
 		$plugin = plugin_basename( __DIR__ . '/eburete-mcp-operations.php' );
+		$was_active = is_plugin_active( $plugin );
 		$current = get_site_transient( 'update_plugins' );
 		if ( ! is_object( $current ) ) { $current = new stdClass(); }
 		if ( ! isset( $current->response ) || ! is_array( $current->response ) ) { $current->response = array(); }
@@ -120,6 +128,8 @@ function eburete_mcp_install_self_update( $input ) {
 		}
 		if ( is_wp_error( $result ) ) { return $result; }
 		if ( ! $result || eburete_mcp_installed_version() !== $release['version'] ) { return new WP_Error( 'upgrade_failed', 'WordPress did not confirm the installed version. Inspect the plugin before retrying.' ); }
+		$restored = eburete_mcp_restore_active_state( $plugin, $was_active );
+		if ( is_wp_error( $restored ) ) { return $restored; }
 		return array( 'installed' => eburete_mcp_installed_version(), 'active' => is_plugin_active( $plugin ), 'next_step' => 'Reconnect and discover abilities on a new MCP request. Current request still runs the previous loaded PHP.' );
 	} finally {
 		if ( file_exists( $file ) ) { wp_delete_file( $file ); }

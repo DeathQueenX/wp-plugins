@@ -35,3 +35,17 @@ archive_test( array_merge( $main, array( 'eburete-mcp-operations/../file.php' =>
 archive_test( array_merge( $main, array( 'another-plugin/file.php' => '<?php' ) ), false );
 archive_test( array( 'eburete-mcp-operations/eburete-mcp-operations.php' => "<?php\n * Version: 0.3.0\n" ), false );
 echo "Manifest and ZIP boundary tests passed.\n";
+function is_plugin_active( $plugin ) { return ! empty( $GLOBALS['plugin_active'] ); }
+function activate_plugin( $plugin, $redirect, $network, $silent ) {
+	if ( ! empty( $GLOBALS['activation_error'] ) ) { return new WP_Error( 'activation_failed', 'Test failure' ); }
+	$GLOBALS['plugin_active'] = true;
+	return null;
+}
+$GLOBALS['plugin_active'] = false;
+check( true === eburete_mcp_restore_active_state( 'eburete-mcp-operations/eburete-mcp-operations.php', true ), 'Active plugin was not restored' );
+check( $GLOBALS['plugin_active'], 'Activation did not occur' );
+$GLOBALS['plugin_active'] = false;
+check( true === eburete_mcp_restore_active_state( 'eburete-mcp-operations/eburete-mcp-operations.php', false ) && ! $GLOBALS['plugin_active'], 'Previously inactive plugin unexpectedly activated' );
+$GLOBALS['activation_error'] = true;
+check( is_wp_error( eburete_mcp_restore_active_state( 'eburete-mcp-operations/eburete-mcp-operations.php', true ) ), 'Activation error was hidden' );
+echo "Self-update activation regression tests passed.\n";

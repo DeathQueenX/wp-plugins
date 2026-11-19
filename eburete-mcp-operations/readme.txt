@@ -3,7 +3,7 @@ Contributors: eburete
 Tags: mcp, litespeed, diagnostics
 Requires at least: 7.1
 Requires PHP: 8.1
-Stable tag: 0.5.0
+Stable tag: 0.5.1
 License: GPL-2.0-or-later
 
 Restricted operational abilities for the official WordPress MCP Adapter.
