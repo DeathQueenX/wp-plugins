@@ -1,4 +1,4 @@
-name: PHP validation
+name: PHP validation and release package
 on:
   push:
     paths:
@@ -17,3 +17,35 @@ jobs:
         run: find eburete-mcp-operations tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Updater security boundaries
         run: php tests/test-updater.php
+      - name: Attribution correctness
+        run: php tests/test-attribution.php
+  package:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build versioned package and manifest
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, zipfile, hashlib, json
+          root = pathlib.Path('eburete-mcp-operations')
+          version = re.search(r'Version: (\d+\.\d+\.\d+)', (root / 'eburete-mcp-operations.php').read_text()).group(1)
+          out = pathlib.Path('packages') / f'eburete-mcp-operations-{version}.zip'
+          out.parent.mkdir(exist_ok=True)
+          if out.exists():
+              raise SystemExit('Refusing to overwrite an existing versioned release')
+          with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as archive:
+              for file in sorted(root.rglob('*')):
+                  if file.is_file():
+                      archive.write(file, file.as_posix())
+          manifest = dict(slug='eburete-mcp-operations', version=version, sha256=hashlib.sha256(out.read_bytes()).hexdigest(), requires_wp='7.1', requires_php='8.1')
+          pathlib.Path('releases/eburete-mcp-operations.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/eburete-mcp-operations-*.zip releases/eburete-mcp-operations.json
+          git commit -m "Publish validated plugin release package"
+          git push

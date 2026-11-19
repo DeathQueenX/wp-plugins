@@ -10,6 +10,7 @@ function eburete_mcp_register_diagnostics() {
 	);
 	$definitions['configure-performance-guard'] = array( 'Configure Query Monitor guard', 'Installs a fixed early diagnostic guard. enabled=true skips Query Monitor only on anonymous frontend requests; false restores it. Preserves admin, REST, cron and authenticated users.', 'eburete_mcp_configure_guard', array( 'enabled' => array( 'type' => 'boolean' ) ) );
 	$definitions['profile-public-page'][3]['disable_query_monitor'] = array( 'type' => 'boolean', 'description' => 'One-request isolation without Query Monitor or query logging; requires early guard.' );
+	$definitions = apply_filters( 'eburete_mcp_diagnostic_definitions', $definitions );
 	foreach ( $definitions as $slug => $definition ) {
 		wp_register_ability( 'eburete-operations/' . $slug, array(
 			'label' => $definition[0], 'description' => $definition[1], 'category' => 'eburete-operations',
@@ -136,6 +137,7 @@ function eburete_mcp_begin_profile() {
 	if ( ! defined( 'SAVEQUERIES' ) ) {
 		define( 'SAVEQUERIES', true );
 	}
+	do_action( 'eburete_mcp_profile_started' );
 	$start = (float) ( $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime( true ) );
 	$phases = array( 'plugins_loaded_start' => round( ( microtime( true ) - $start ) * 1000, 2 ) );
 	$phases['_query_monitor_disabled'] = defined( 'QM_DISABLED' ) && QM_DISABLED;
@@ -173,6 +175,6 @@ function eburete_mcp_begin_profile() {
 		}
 		uasort( $groups, static function ( $a, $b ) { return $b['ms'] <=> $a['ms']; } );
 		$elapsed = round( ( microtime( true ) - $start ) * 1000, 2 );
-		set_transient( 'eburete_mcp_report_' . $key, array( 'php_ms' => $elapsed, 'phases_ms_from_request_start' => $phases, 'db_queries_total' => $wpdb->num_queries, 'db_logged_queries' => count( (array) $wpdb->queries ), 'db_logged_ms' => round( $db_ms, 2 ), 'db_slowest_callers' => array_slice( $groups, 0, 15, true ), 'http_requests_after_plugins_loaded' => $http, 'peak_memory_bytes' => memory_get_peak_usage( true ), 'warning' => 'SAVEQUERIES and any active Query Monitor add overhead. Queries before plugins_loaded may be absent. HTTP covers WordPress HTTP API only; phase deltas are not exclusive CPU time.' ), 180 );
+		set_transient( 'eburete_mcp_report_' . $key, array( 'shortcodes' => Eburete_MCP_Attribution::report(), 'repeated_queries' => Eburete_MCP_Attribution::query_report(), 'php_ms' => $elapsed, 'phases_ms_from_request_start' => $phases, 'db_queries_total' => $wpdb->num_queries, 'db_logged_queries' => count( (array) $wpdb->queries ), 'db_logged_ms' => round( $db_ms, 2 ), 'db_slowest_callers' => array_slice( $groups, 0, 15, true ), 'http_requests_after_plugins_loaded' => $http, 'peak_memory_bytes' => memory_get_peak_usage( true ), 'warning' => 'SAVEQUERIES and any active Query Monitor add overhead. Queries before plugins_loaded may be absent. HTTP covers WordPress HTTP API only; phase deltas are not exclusive CPU time.' ), 180 );
 	}, PHP_INT_MAX );
 }
