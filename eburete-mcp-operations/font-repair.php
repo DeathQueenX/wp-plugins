@@ -20,10 +20,14 @@ function eburete_mcp_font_repair( $input = array() ) {
 	if ( ! $root || ! empty( $uploads['error'] ) ) { return new WP_Error( 'font_uploads', 'Uploads directory unavailable.' ); }
 	foreach ( $definitions as $id => $font ) {
 		$path = get_attached_file( $id, true ); $expected = $uploads['basedir'] . '/2024/10/' . $font['file'];
-		$parent = realpath( dirname( $expected ) );
-		if ( 'attachment' !== get_post_type( $id ) || wp_normalize_path( $path ) !== wp_normalize_path( $expected ) || ! $parent || ! str_starts_with( wp_normalize_path( $parent ) . '/', trailingslashit( wp_normalize_path( $root ) ) ) || is_link( $expected ) ) { return new WP_Error( 'font_target', 'Registered font path did not match the fixed repair target.' ); }
+		$ancestor = dirname( $expected );
+		while ( ! file_exists( $ancestor ) && dirname( $ancestor ) !== $ancestor ) { $ancestor = dirname( $ancestor ); }
+		$parent = realpath( $ancestor );
+		$url_matches = wp_get_attachment_url( $id ) === rtrim( $uploads['baseurl'], '/' ) . '/2024/10/' . $font['file'];
+		$safe = 'attachment' === get_post_type( $id ) && $url_matches && $parent && str_starts_with( wp_normalize_path( $parent ) . '/', trailingslashit( wp_normalize_path( $root ) ) ) && ! is_link( $expected );
+		if ( ! $safe && 'inspect' !== $action ) { return new WP_Error( 'font_target', 'Registered public font URL or target directory did not match the fixed repair target.' ); }
 		$paths[ $id ] = $expected;
-		$result[ $id ] = array( 'file' => $font['file'], 'exists' => file_exists( $expected ), 'expected_hash' => file_exists( $expected ) && hash_file( 'sha256', $expected ) === $font['sha256'] );
+		$result[ $id ] = array( 'file' => $font['file'], 'exists' => file_exists( $expected ), 'expected_hash' => file_exists( $expected ) && hash_file( 'sha256', $expected ) === $font['sha256'], 'safe_target' => (bool) $safe, 'registered_url_matches' => $url_matches, 'registered_path_matches' => wp_normalize_path( $path ) === wp_normalize_path( $expected ), 'parent_exists' => is_dir( dirname( $expected ) ) );
 	}
 	if ( 'inspect' === $action ) { return array( 'files' => $result, 'changed' => array() ); }
 	$created = (array) get_option( 'eburete_mcp_restored_fonts', array() ); $changed = array();
@@ -43,6 +47,7 @@ function eburete_mcp_font_repair( $input = array() ) {
 			$bodies[ $id ] = $body;
 		}
 		foreach ( $bodies as $id => $body ) {
+			if ( ! wp_mkdir_p( dirname( $paths[ $id ] ) ) || ! str_starts_with( wp_normalize_path( realpath( dirname( $paths[ $id ] ) ) ) . '/', trailingslashit( wp_normalize_path( $root ) ) ) ) { return new WP_Error( 'font_directory', 'Font directory could not be created safely.' ); }
 			$handle = @fopen( $paths[ $id ], 'xb' );
 			if ( ! $handle ) { return new WP_Error( 'font_create', 'Exclusive creation failed; existing files were not overwritten.' ); }
 			$written = fwrite( $handle, $body ); fclose( $handle );

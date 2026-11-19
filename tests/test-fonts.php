@@ -4,7 +4,9 @@ class WP_Error { public function __construct( public $code, public $message ) {}
 function add_filter( ...$args ) {}
 function current_user_can( $cap ) { return $GLOBALS['allow']; }
 function wp_is_file_mod_allowed( $context ) { return true; }
-function wp_upload_dir() { return array( 'basedir' => $GLOBALS['root'], 'error' => false ); }
+function wp_upload_dir() { return array( 'basedir' => $GLOBALS['root'], 'baseurl' => 'https://eburete.ro/wp-content/uploads', 'error' => false ); }
+function wp_get_attachment_url( $id ) { return 'https://eburete.ro/wp-content/uploads/2024/10/' . ( $id === 615 ? 'Satoshi-Medium.woff' : 'Satoshi-Bold.woff' ) . ( $GLOBALS['mismatch'] ? '.unexpected' : '' ); }
+function wp_mkdir_p( $path ) { return is_dir( $path ) || mkdir( $path, 0777, true ); }
 function get_attached_file( $id, $raw ) { return $GLOBALS['root'] . '/2024/10/' . ( $id === 615 ? 'Satoshi-Medium.woff' : 'Satoshi-Bold.woff' ) . ( $GLOBALS['mismatch'] ? '.unexpected' : '' ); }
 function get_post_type( $id ) { return 'attachment'; }
 function wp_normalize_path( $path ) { return str_replace( '\\', '/', $path ); }
@@ -22,7 +24,7 @@ require __DIR__ . '/../eburete-mcp-operations/font-repair.php';
 try {
 	check( eburete_mcp_font_repair( array( 'action' => 'execute' ) ) instanceof WP_Error, 'no arbitrary action' );
 	$allow = false; check( eburete_mcp_font_repair( array( 'action' => 'restore' ) ) instanceof WP_Error, 'permission required' ); $allow = true;
-	$mismatch = true; check( eburete_mcp_font_repair() instanceof WP_Error, 'exact media path required' ); $mismatch = false;
+	$mismatch = true; check( eburete_mcp_font_repair( array( 'action' => 'restore' ) ) instanceof WP_Error, 'exact public media URL required' ); $mismatch = false;
 	$r = eburete_mcp_font_repair(); check( count( $r['files'] ) === 2 && $http === 0, 'inspect makes no downloads' );
 	$r = eburete_mcp_font_repair( array( 'action' => 'restore' ) ); check( $r instanceof WP_Error && $r->code === 'font_integrity', 'pinned hash enforced' );
 	check( ! file_exists( $root . '/2024/10/Satoshi-Medium.woff' ) && ! file_exists( $root . '/2024/10/Satoshi-Bold.woff' ), 'invalid download creates no files' );
