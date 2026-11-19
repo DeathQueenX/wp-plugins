@@ -26,6 +26,8 @@ function eburete_mcp_object_cache_readiness( $input = array() ) {
 	if ( empty( $input['probe_local_redis'] ) ) { return $result; }
 	$host = (string) $conf->conf( 'object-host' );
 	$port = (int) $conf->conf( 'object-port' );
+	// Explicit readiness probe: use the conventional loopback Redis endpoint only when no endpoint is configured.
+	if ( ! in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true ) || $port < 1 || $port > 65535 ) { $host = '127.0.0.1'; $port = 6379; $result['probe_endpoint'] = 'default_loopback_6379'; }
 	if ( ! in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true ) || $port < 1 || $port > 65535 || ! class_exists( 'Redis' ) ) {
 		$result['probe'] = 'skipped_no_configured_loopback_redis';
 		return $result;
