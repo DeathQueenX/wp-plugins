@@ -1,7 +1,7 @@
 {
   "slug": "eburete-mcp-operations",
-  "version": "0.7.0",
-  "sha256": "b0ce974aa2c3f28d47462d961114bb46534af7f8ad911a242e14e41d5b4525c7",
+  "version": "0.7.1",
+  "sha256": "798d7915408b1f86f3d7c2407e2cf10ddb7ea4f8bd503a12279871e7b30e48d8",
   "requires_wp": "7.1",
   "requires_php": "8.1"
 }
